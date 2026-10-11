@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kalle Knolle 3.0</title>
+<style>
+:root{--soil:#6e4b2c;--soil2:#5a3c22;--paper:#fff8ea;--paper2:#f1e2c4;--ink:#3b2a1a;--muted:#7a6450;--green:#4f8a35;--red:#c4422c;--gold:#f0bd3f;color-scheme:light}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:16px;background-color:var(--soil);background-image:linear-gradient(180deg,#bfe5fa 0,#f6e2a0 120px,#5c8a3a 121px,#5c8a3a 132px,transparent 133px),repeating-linear-gradient(180deg,var(--soil) 0 26px,var(--soil2) 26px 31px);font-family:'Trebuchet MS',Verdana,system-ui,sans-serif;color:var(--ink);font-size:18px}
+.box{background:var(--paper);border-radius:20px;padding:22px;max-width:380px;width:100%;display:grid;gap:12px;text-align:center;box-shadow:0 7px 0 rgba(0,0,0,.28)}
+h1{margin:0;font-size:30px}
+input{font:inherit;font-size:22px;padding:10px 14px;border-radius:12px;border:3px solid var(--paper2);width:100%;text-align:center}
+input:focus{outline:none;border-color:var(--gold)}
+button{font:inherit;font-size:22px;font-weight:700;border:0;border-radius:14px;padding:12px 20px;background:var(--green);color:#fff;box-shadow:0 5px 0 rgba(0,0,0,.28);cursor:pointer;width:100%}
+button[disabled]{opacity:.6}
+.err{color:var(--red);font-weight:700}
+.small{font-size:15px;color:var(--muted)}
+a{color:#2f6fa3}
+.k{width:90px;margin:0 auto}
+</style>
+</head>
+<body>
+<div class="box">
+  <svg class="k" viewBox="0 0 200 210" aria-hidden="true"><path d="M100 30 C150 28 172 70 168 120 C164 170 130 195 98 193 C60 191 32 165 34 115 C36 70 55 32 100 30Z" fill="#d6a868" stroke="#8b5e30" stroke-width="4"/><ellipse cx="80" cy="90" rx="13" ry="15" fill="#fff" stroke="#3b2a1a" stroke-width="2"/><ellipse cx="122" cy="90" rx="13" ry="15" fill="#fff" stroke="#3b2a1a" stroke-width="2"/><circle cx="83" cy="93" r="6.5" fill="#3b2a1a"/><circle cx="125" cy="93" r="6.5" fill="#3b2a1a"/><path d="M84 122 Q101 142 118 122" stroke="#3b2a1a" stroke-width="4" fill="#7a2a1c" stroke-linecap="round"/></svg>
+  <h1>Kalle Knolle 3.0</h1>
+  <div id="load">Kalle holt das Spiel …</div>
+  <form id="f" hidden>
+    <p style="margin:0 0 10px">Bitte gib das Passwort ein.</p>
+    <input id="pw" type="password" autocomplete="current-password" aria-label="Passwort">
+    <p class="err" id="err" hidden>Das Passwort stimmt leider nicht.</p>
+    <button id="go" type="submit" style="margin-top:12px">Los geht's!</button>
+    <p class="small">Das Passwort wird nur auf diesem Gerät gespeichert.</p>
+  </form>
+  <p class="err" id="fail" hidden>Das Spiel konnte nicht geladen werden. Bitte die Seite neu laden.</p>
+  <a href="index.html" class="small">Zur Übersicht</a>
+</div>
+<script>
+const SRC='kalle-knolle-3.enc',ITER=300000,PWKEY='kalle-knolle-passwort';
+async function decrypt(pw,buf){const b=new Uint8Array(buf);const salt=b.slice(0,16),iv=b.slice(16,28),ct=b.slice(28);
+ const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+ const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:ITER,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+ const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ct);
+ return await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream('gzip'))).text()}
+function showGame(h){document.open();document.write(h);document.close()}
+(async()=>{let buf;try{const r=await fetch(SRC);if(!r.ok)throw 0;buf=await r.arrayBuffer()}catch(e){document.getElementById('load').hidden=true;document.getElementById('fail').hidden=false;return}
+ let saved=null;try{saved=localStorage.getItem(PWKEY)}catch(e){}
+ if(saved){try{showGame(await decrypt(saved,buf));return}catch(e){}}
+ document.getElementById('load').hidden=true;const f=document.getElementById('f');f.hidden=false;document.getElementById('pw').focus();
+ f.onsubmit=async e=>{e.preventDefault();const pw=document.getElementById('pw').value;const go=document.getElementById('go');go.disabled=true;go.textContent='Moment …';
+  try{const h=await decrypt(pw,buf);try{localStorage.setItem(PWKEY,pw)}catch(e){}showGame(h)}
+  catch(err){document.getElementById('err').hidden=false;go.disabled=false;go.textContent="Los geht's!"}}})();
+</script>
+</body>
+</html>
